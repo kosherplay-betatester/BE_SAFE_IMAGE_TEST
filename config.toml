@@ -1,0 +1,6 @@
+[server]
+headless = true
+enableCORS = false
+enableWebsocketCompression = false
+port = 8501
+address = "192.168.31.85"

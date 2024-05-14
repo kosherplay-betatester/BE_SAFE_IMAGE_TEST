@@ -1,0 +1,8 @@
+# .streamlit/config.toml
+
+[server]
+headless = true
+enableCORS = false
+enableWebsocketCompression = false
+port = 8501
+address = "0.0.0.0"

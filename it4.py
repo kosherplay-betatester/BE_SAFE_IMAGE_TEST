@@ -17,7 +17,7 @@ model_detection = torch.hub.load('ultralytics/yolov5', 'yolov5s')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model_classification, preprocess = clip.load("ViT-B/32", device=device)
 
-categories = ["man", "woman"]
+categories = ["man", "woman","object"]
 
 # Function to load image from URL
 def load_image_from_url(url):
@@ -39,7 +39,7 @@ def get_image_urls(webpage_url):
     return image_urls
 
 # Function to process an image
-def process_image(image):
+def process_image(image, image_url):
     # Run object detection on the image
     results = model_detection(image)
 
@@ -54,7 +54,7 @@ def process_image(image):
             total_image_area = image.width * image.height
             bbox_proportion = bbox_area / total_image_area
 
-            # If the bounding box is less than 5% of the total image, skip ,Default value is 0.05
+            # If the bounding box is less than 5% of the total image, skip
             if bbox_proportion < 0.1111:
                 st.write("Person is too pixelized, skipped.")
                 continue
@@ -78,6 +78,7 @@ def process_image(image):
 
         for i, crop_probs in enumerate(probs):
             st.image(crops[i], caption='Detected person.', use_column_width=True)
+            st.write(f"[Image Source]({image_url})")
 
             # Store the scores in a dictionary
             scores = {category: probability for category, probability in zip(categories, crop_probs)}
@@ -107,6 +108,6 @@ image_urls = get_image_urls(webpage_url)
 
 if image_urls:
     st.write(f"Found {len(image_urls)} images on {webpage_url}")
-    images = [load_image_from_url(image_url) for image_url in image_urls]
-    for image in images:
-        process_image(image)
+    for image_url in image_urls:
+        image = load_image_from_url(image_url)
+        process_image(image, image_url)

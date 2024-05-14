@@ -5,7 +5,6 @@ import clip
 from io import BytesIO
 import requests
 from torchvision import transforms
-import cv2
 import numpy as np
 from bs4 import BeautifulSoup
 import urllib.parse
@@ -17,7 +16,7 @@ model_detection = torch.hub.load('ultralytics/yolov5', 'yolov5s')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model_classification, preprocess = clip.load("ViT-B/32", device=device)
 
-categories = ["man", "woman"]
+categories = ["man", "woman", "object"]
 
 # Function to load image from URL
 def load_image_from_url(url):
@@ -39,7 +38,7 @@ def get_image_urls(webpage_url):
     return image_urls
 
 # Function to process an image
-def process_image(image):
+def process_image(image, image_url):
     # Run object detection on the image
     results = model_detection(image)
 
@@ -54,7 +53,7 @@ def process_image(image):
             total_image_area = image.width * image.height
             bbox_proportion = bbox_area / total_image_area
 
-            # If the bounding box is less than 5% of the total image, skip ,Default value is 0.05
+            # If the bounding box is less than 5% of the total image, skip
             if bbox_proportion < 0.1111:
                 st.write("Person is too pixelized, skipped.")
                 continue
@@ -77,19 +76,44 @@ def process_image(image):
             probs = torch.softmax(logits_per_image, dim=-1).cpu().numpy()
 
         for i, crop_probs in enumerate(probs):
-            st.image(crops[i], caption='Detected person.', use_column_width=True)
-
             # Store the scores in a dictionary
             scores = {category: probability for category, probability in zip(categories, crop_probs)}
 
             # Sort the scores in descending order
             sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
 
+            # Determine the highest score category
+            highest_category = sorted_scores[0][0]
+            if highest_category == "woman":
+                border_color = "pink"
+            elif highest_category == "man":
+                border_color = "blue"
+            else:
+                border_color = "gray"
+
+            # Display the image with the appropriate border color
+            st.markdown(
+                f"""
+                <div style="border: 5px solid {border_color}; padding: 5px; display: inline-block;">
+                    <img src="{image_url}" width="100%" />
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # Display the image source link colored with the image border color
+            st.markdown(
+                f"""
+                <a href="{image_url}" style="color: {border_color};">Image Source</a>
+                """,
+                unsafe_allow_html=True
+            )
+
             # Print the probabilities
             for category, probability in sorted_scores:
                 # Highlight the top score in bold, the second score in italics
                 if category == sorted_scores[0][0]:
-                    st.write(f"{category.capitalize()} Score: {probability * 100:.2f}")
+                    st.write(f"**{category.capitalize()} Score: {probability * 100:.2f}**")
                 elif category == sorted_scores[1][0]:
                     st.write(f"*{category.capitalize()} Score: {probability * 100:.2f}*")
                 else:
@@ -99,6 +123,16 @@ def process_image(image):
             st.write(f"\nImage probably includes: a {sorted_scores[0][0].capitalize()} \
                         {sorted_scores[0][1]*100:.2f}% or a {sorted_scores[1][0].capitalize()} {sorted_scores[1][1]*100:.2f}%")
 
+            # Write color-coded link for the highest category
+            st.markdown(
+                f"""
+                <div>
+                    <span style="color: {border_color};">{highest_category}: <a href="{image_url}">{image_url}</a></span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
 # Streamlit app
 st.title("Image Content Analyzer")
 
@@ -107,6 +141,6 @@ image_urls = get_image_urls(webpage_url)
 
 if image_urls:
     st.write(f"Found {len(image_urls)} images on {webpage_url}")
-    images = [load_image_from_url(image_url) for image_url in image_urls]
-    for image in images:
-        process_image(image)
+    for image_url in image_urls:
+        image = load_image_from_url(image_url)
+        process_image(image, image_url)
