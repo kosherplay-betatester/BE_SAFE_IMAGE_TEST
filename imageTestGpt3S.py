@@ -44,7 +44,7 @@ except pynvml.NVMLError:
 def load_models():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # YOLOv11 small for person detection
-    yolo_model = YOLO("yolo11s.pt").to(device)
+    yolo_model = YOLO("yolo11n.pt").to(device)
     # CLIP ViT-L/14@336px for high-accuracy classification
     clf_model, preprocess = clip.load("ViT-L/14@336px", device=device)
     categories = ["man", "woman", "object"]
